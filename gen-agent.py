@@ -29,17 +29,22 @@ class Agent:
     def __init__(self, job, name, backstory):
         self.job = job
         self.name = name
-        self.backstory = f"your job is {self.job}, your name is {self.name} and your backstory is {backstory}."
+        self.backstory = f"Your name is {self.name}, your job is {self.job} and your backstory is {backstory}."
 
     def response(self, messages): 
         self.messages = messages
 
         response = client.responses.create(
         model="gpt-3.5-turbo",
-        input=f"{self.backstory} And the conversation you are in is like this {self.messages} ",
+        input=f"{self.backstory} And the conversation you are in is like this {self.messages}.",
         store=True,    
         )
-        return print(response.output_text)
+        print(response.output_text)
+        messages = messages + f"{self.name} said: {response.output_text}"
+        return response.output_text
 
 
-
+while True:
+    a1.response(f"You are first to speak in the conversation between you, {a2.name} and {a3.name}.")
+    a2.response(messages)
+    a3.response(messages)
