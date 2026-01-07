@@ -1,29 +1,16 @@
 from dotenv import load_dotenv
-from openai import OpenAI
+from google import genai
+from google.genai import types
 import os
+import time
 
 load_dotenv()
 
-client = OpenAI(api_key= os.getenv("OPEN_API_KEY"))
+api_key = os.getenv("GOOGLE_API_KEY")
 
-messages = {}
+client = genai.Client(api_key=api_key)
 
-a1_job = "Quantum Gravity & Temporal Mechanics Researcher"
-a1_name = "Dr. Valerius Thorne"
-a1_backstory = "You are obsessed with the idea that time is not fundamental but emergent. You are extremely arrogant but brilliant. You despise simplified explanations and tend to use complex metaphors involving entropy. You think biologists are just studying 'squishy physics'."
-a1 = Agent(a1_job, a1_name, a1_backstory)
-    
-a2_job = "Synthetic Xenobiologist"
-a2_name = "Dr. Elara Vance"
-a2_backstory = "You design artificial ecosystems for terraforming other planets. You believe nature is the ultimate engineer. You are calm, empathetic, but aggressively defensive when physics ignores the complexity of life. You constantly remind others about ethical implications."
-a2 = Agent(a2_job, a2_name, a2_backstory)
-
-a3_job = "Neuromorphic Computing Architect"
-a3_name = "Silas"
-a3_backstory = "You work on merging human wetware with silicon. You speak with extreme precision and practically zero emotion. You view discussions as 'data optimization processes'. You often point out logical fallacies in human arguments."
-a3 = Agent(a3_job, a3_name, a3_backstory)
-
-messages = {}
+messages = []
 
 class Agent:
     def __init__(self, job, name, backstory):
@@ -32,19 +19,65 @@ class Agent:
         self.backstory = f"Your name is {self.name}, your job is {self.job} and your backstory is {backstory}."
 
     def response(self, messages): 
-        self.messages = messages
+        self.messages = "\n".join(messages)
 
-        response = client.responses.create(
-        model="gpt-3.5-turbo",
-        input=f"{self.backstory} And the conversation you are in is like this {self.messages}.",
-        store=True,    
+        prompt = (
+            f"--- IDENTITY ---\n"
+            f"Name: {self.name}\n"
+            f"Job: {self.job}\n"
+            f"Backstory: {self.backstory}\n\n"
+            f"--- CONVERSATION HISTORY ---\n"
+            f"{self.messages}\n\n"
+            f"--- INSTRUCTION ---\n"
+            f"You are {self.name}. Reply to the conversation above. "
+            f"Do NOT repeat previous messages. Only provide your new response.\n\n"
+            f"{self.name}:" 
         )
-        print(response.output_text)
-        messages = messages + f"{self.name} said: {response.output_text}"
-        return response.output_text
+        response = client.models.generate_content(
+            model = "gemini-2.5-flash-lite",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=200,
+                stop_sequences=["\nDr. Valerius", "\nDr. Elara", "\nSilas"]
+            )
+        )
+        print(prompt)
+        agent_response = response.text.strip()
+        print(f"{self.name} said:\n {agent_response}")
+        messages.append(f"{self.name} said: {agent_response}")
+        time.sleep(4)
+        return agent_response
 
 
-while True:
-    a1.response(f"You are first to speak in the conversation between you, {a2.name} and {a3.name}.")
+
+a1 = Agent(
+    "Quantum Gravity Researcher", 
+    "Dr. Valerius Thorne", 
+    "Obsessed with emergent time. Arrogant but brilliant. Uses complex entropy metaphors."
+)
+    
+a2 = Agent(
+    "Synthetic Xenobiologist", 
+    "Dr. Elara Vance", 
+    "Designs artificial ecosystems. Calm, empathetic, defensive about biological complexity."
+)
+
+a3 = Agent(
+    "Neuromorphic Architect", 
+    "Silas", 
+    "Merges wetware with silicon. Precise, emotionless, points out logical fallacies."
+)
+
+first_message = f"You are first to speak in the conversation between you, {a2.name} and {a3.name}."
+messages.append(first_message)
+
+round_counter = 0
+
+while round_counter < 3:
+    print(f"\n=== Round {round_counter + 1} ===")
+    a1.response(messages)
     a2.response(messages)
     a3.response(messages)
+
+    round_counter = round_counter + 1
